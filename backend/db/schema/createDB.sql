@@ -10,6 +10,7 @@ CREATE TABLE users (
 
 CREATE TABLE kanbans (
     kanban_id SERIAL PRIMARY KEY,
+    kanban_title VARCHAR (50) NOT NULL,
     user_id INT,
     CONSTRAINT fk_user
         FOREIGN KEY (user_id)

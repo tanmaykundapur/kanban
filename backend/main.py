@@ -16,18 +16,11 @@ app.add_middleware(
 )
 
 # Connect to DB
-conn = psycopg2.connect("dbname=mydb user=tanmayk")
-
-cur = conn.cursor()
-
-# Initial Seeding of DB
-# with open("./db/schema/seedDB.sql", 'r') as f:
-#     sql_script = f.read()
-# cur.execute(sql_script)
-# conn.commit()
+conn = psycopg2.connect("dbname=kanban user=tanmayk")
 
 # Print DB
 def printDB():
+    cur = conn.cursor()
     tables = ['users', 'kanbans', 'access', 'columns', 'tasks']
 
     for table in tables:
@@ -37,23 +30,27 @@ def printDB():
             print(record)
 
 printDB()
-
 print("Executed")
 
-# Disconnect from DB
-cur.close()
-conn.close()
+
 
 # Home Page
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
-
 # Read Kanbans
-def readKanbans():
+@app.get("/kanbans")
+async def readKanbans():
+    print("Reading Kanbans...")
     cur = conn.cursor()
-    cur.execute('')
+    cur.execute('SELECT * from kanbans')
+    out = {}
+    for i, record in enumerate(cur):
+        out[str(i)] = record
+    cur.close()
+    return out
+
 
 # Read Columns
 # Read Tasks
@@ -74,3 +71,6 @@ def update():
 
 def delete():
     print("Deleted")
+
+# Disconnect from DB
+# conn.close()
