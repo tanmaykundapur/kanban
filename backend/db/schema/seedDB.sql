@@ -1,8 +1,6 @@
-TRUNCATE users;
-TRUNCATE kanbans;
-TRUNCATE access;
-TRUNCATE columns;
-TRUNCATE tasks;
+SET lock_timeout = '2s';
+
+TRUNCATE users, kanbans, access, columns, tasks RESTART IDENTITY CASCADE;
 
 -- Seed Users Table
 INSERT INTO users (user_id, username, password, email) VALUES
@@ -24,9 +22,9 @@ INSERT INTO columns (column_id, column_title, user_id, kanban_id) VALUES
     (1, 'To Do', 1, 1),
     (2, 'In Progress', 1, 1),
     (3, 'Completed', 1, 1),
-    (4, 'To Do', 1, 2),
-    (5, 'In Progress', 1, 2),
-    (6, 'Completed', 1, 2);
+    (4, 'First', 1, 2),
+    (5, 'Second', 1, 2),
+    (6, 'Third', 1, 2);
 
 -- Seed Tasks Table
 INSERT INTO tasks (task_id, task_content, task_status, user_id, kanban_id, column_id) VALUES
