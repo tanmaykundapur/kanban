@@ -46,6 +46,13 @@ export default function KanbanBoard({
           ))}
         </ul>
       </div>
+      <textarea
+        className="mt-5 block p-2.5 w-full text-lg resize-none overflow-hidden whitespace-nowrap text-gray-900 bg-gray-100 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+        rows={2}
+        name=""
+        id=""
+        placeholder="Type your task here..."
+      ></textarea>
     </>
   );
 }
