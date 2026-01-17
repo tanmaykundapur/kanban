@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
+from pydantic import BaseModel
 
 # Create an Instance of FastAPI
 app = FastAPI()
@@ -30,9 +31,6 @@ def printDB():
             print(record)
 
 printDB()
-print("Executed")
-
-
 
 # Home Page
 @app.get("/")
@@ -42,7 +40,7 @@ async def root():
 # Read Kanbans
 @app.get("/kanbans")
 async def readKanbans():
-    print("Reading Kanbans...")
+    print("Reading All Kanbans...")
     cur = conn.cursor()
     cur.execute('SELECT * from kanbans')
     out = {}
@@ -60,6 +58,52 @@ async def readKanbans():
         }
     cur.close()
     return out
+
+# getKanban(id)
+@app.get("/kanban/{id}")
+def getKanban(id):
+    print("Getting Kanban...")
+    cur = conn.cursor()
+    print(cur)
+    cur.execute("""
+                SELECT k.kanban_id, k.kanban_title, 
+                c.column_id, c.column_title,
+                t.task_id, t.task_content, t.task_status 
+                FROM kanbans k 
+                LEFT JOIN columns c ON c.kanban_id = k.kanban_id 
+                LEFT JOIN tasks t ON t.column_id = c.column_id
+                WHERE k.kanban_id = %s
+                ORDER BY c.column_id, t.task_id
+                """, (id,))
+    rows = cur.fetchall()
+    cur.close()
+    kanban = None
+    columns_by_id = {}
+    for (kanban_id, kanban_title, column_id, column_title, task_id, task_content, task_status) in rows:
+        if kanban is None:
+            kanban = {
+                "kanban_id": kanban_id,
+                "kanban_title": kanban_title,
+                "columns": []
+            }
+
+        if column_id not in columns_by_id:
+            columns_by_id[column_id] = {
+                "column_id": column_id,
+                "column_title": column_title,
+                "tasks": []
+            }
+        
+        if task_id is not None:
+            columns_by_id[column_id]["tasks"].append({
+                "task_id": task_id,
+                "task_content": task_content,
+                "task_status": task_status
+            })
+
+    kanban["columns"] = columns_by_id
+    return kanban
+
 
 # Read Columns
 @app.get("/columns")
@@ -101,9 +145,41 @@ def readTasks():
     cur.close()
     return {"tasks": tasks}
 
-# Create Kanban
-# Create Column
-# Create Task
+# Create Column (#id, column)
+
+class Task(BaseModel):
+    task_id: int
+    task_content: str
+    task_status: str
+    user_id: int
+    kanban_id: int
+    column_id: int
+
+class Task1(BaseModel):
+    task: str
+
+# Create Task (#id, col)
+@app.post("/task/{id}")
+def createTask(id: int, task: Task1):
+    print("Creating Task...")
+    print(task)
+    print("id", id)
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO tasks (task_content, task_status, kanban_id) VALUES (%s, %s, %s)",
+            (task, "active", id)  # Pass values as a tuple
+        )
+        conn.commit()
+        print("Task created successfully.")
+    except Exception as e:
+        conn.rollback()  # Rollback if there is an error
+        print(f"Error occurred: {e}")
+    finally:
+        cur.close()
+
+    return {"message": "Task created successfully", "task_id": id}
+
 # Update Task
 # Delete Task
 
