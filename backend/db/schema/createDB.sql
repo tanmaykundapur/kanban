@@ -1,3 +1,10 @@
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS kanbans CASCADE;
+DROP TABLE IF EXISTS access CASCADE;
+DROP TABLE IF EXISTS columns CASCADE;
+DROP TABLE IF EXISTS tasks CASCADE;
+
+
 CREATE TABLE users (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR (50) UNIQUE NOT NULL,
@@ -50,7 +57,7 @@ CREATE TABLE tasks (
     task_status VARCHAR (20) NOT NULL,
     user_id INT,
     kanban_id INT,
-    column_id INT,
+    column_id INT DEFAULT 1,
     CONSTRAINT fk_user
         FOREIGN KEY (user_id)
         REFERENCES users (user_id)

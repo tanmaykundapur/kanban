@@ -156,7 +156,7 @@ class Task(BaseModel):
     column_id: int
 
 class Task1(BaseModel):
-    task: str
+    task_content: str
 
 # Create Task (#id, col)
 @app.post("/task/{id}")
@@ -166,9 +166,11 @@ def createTask(id: int, task: Task1):
     print("id", id)
     cur = conn.cursor()
     try:
+        print(type(task))        # Task1
+        print(type(task.task_content))   # str
         cur.execute(
             "INSERT INTO tasks (task_content, task_status, kanban_id) VALUES (%s, %s, %s)",
-            (task, "active", id)  # Pass values as a tuple
+            (task.task_content, "active", id)  # Pass values as a tuple
         )
         conn.commit()
         print("Task created successfully.")
@@ -181,7 +183,36 @@ def createTask(id: int, task: Task1):
     return {"message": "Task created successfully", "task_id": id}
 
 # Update Task
+@app.post("/task/{task_id}/{column_id}")
+def updateTask(task_id: int, column_id: int):
+    print("Updating Task...")
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE tasks SET column_id = {column_id} WHERE task_id = {task_id} ")
+    except Exception as e:
+        conn.rollback()
+    finally:
+        cur.close()
+
 # Delete Task
+@app.delete("/task/{task_id}")
+def deleteTask(task_id: int):
+    print("Deleting Task...")
+    print("task_id:", task_id, type(task_id))
+
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM tasks WHERE task_id = %s", (task_id,))
+        conn.commit()
+        print("Deleted Task successfully")
+    except Exception as e:
+        conn.rollback()
+        print(f"Error occured: {e}")
+    finally:
+        cur.close()
+    return {"message": "Task deleted successfully", "task_id": task_id}
+
+
 
 # Disconnect from DB
 # conn.close()
