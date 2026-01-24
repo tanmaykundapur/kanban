@@ -64,45 +64,48 @@ async def readKanbans():
 def getKanban(id):
     print("Getting Kanban...")
     cur = conn.cursor()
-    print(cur)
     cur.execute("""
-                SELECT k.kanban_id, k.kanban_title, 
-                c.column_id, c.column_title,
-                t.task_id, t.task_content, t.task_status 
-                FROM kanbans k 
-                LEFT JOIN columns c ON c.kanban_id = k.kanban_id 
-                LEFT JOIN tasks t ON t.column_id = c.column_id
-                WHERE k.kanban_id = %s
-                ORDER BY c.column_id, t.task_id
-                """, (id,))
+        SELECT k.kanban_id, k.kanban_title, 
+               c.column_id, c.column_title,
+               t.task_id, t.task_content, t.task_status 
+        FROM kanbans k 
+        LEFT JOIN columns c ON c.kanban_id = k.kanban_id 
+        LEFT JOIN tasks t ON t.column_id = c.column_id
+        WHERE k.kanban_id = %s
+        ORDER BY c.column_id, t.task_id
+        """, (id,))
     rows = cur.fetchall()
     cur.close()
+
     kanban = None
     columns_by_id = {}
+
     for (kanban_id, kanban_title, column_id, column_title, task_id, task_content, task_status) in rows:
         if kanban is None:
             kanban = {
                 "kanban_id": kanban_id,
                 "kanban_title": kanban_title,
-                "columns": []
+                "columns": {}
             }
 
-        if column_id not in columns_by_id:
-            columns_by_id[column_id] = {
+        column_key = str(column_id)  # always use string keys
+        if column_key not in columns_by_id:
+            columns_by_id[column_key] = {
                 "column_id": column_id,
                 "column_title": column_title,
                 "tasks": []
             }
-        
+
         if task_id is not None:
-            columns_by_id[column_id]["tasks"].append({
-                "task_id": task_id,
+            columns_by_id[column_key]["tasks"].append({
+                "task_id": str(task_id),  # ensure task IDs are strings for frontend
                 "task_content": task_content,
                 "task_status": task_status
             })
 
     kanban["columns"] = columns_by_id
     return kanban
+
 
 
 # Read Columns
@@ -182,17 +185,23 @@ def createTask(id: int, task: Task1):
 
     return {"message": "Task created successfully", "task_id": id}
 
-# Update Task
 @app.post("/task/{task_id}/{column_id}")
-def updateTask(task_id: int, column_id: int):
-    print("Updating Task...")
+def updateTask(task_id: str, column_id: int):  # task_id as str
+    print("Updating Task...", task_id, column_id)
     cur = conn.cursor()
     try:
-        cur.execute("UPDATE tasks SET column_id = {column_id} WHERE task_id = {task_id} ")
+        cur.execute(
+            "UPDATE tasks SET column_id = %s WHERE task_id = %s",
+            (column_id, task_id),
+        )
+        print("Rows updated:", cur.rowcount)
+        conn.commit()
     except Exception as e:
         conn.rollback()
+        raise e
     finally:
         cur.close()
+
 
 # Delete Task
 @app.delete("/task/{task_id}")

@@ -1,6 +1,6 @@
 "use client";
 
-import { DndContext, pointerWithin } from "@dnd-kit/core";
+import { closestCorners, DndContext, DragEndEvent } from "@dnd-kit/core";
 import { FormEvent, useEffect, useState } from "react";
 import { Draggable } from "./Draggable";
 import { Droppable } from "./Droppable";
@@ -11,10 +11,11 @@ export default function KanbanBoard({
   currentKanban: string;
 }) {
   interface Column {
-    id: string;
+    column_id: string | number;
     column_title: string;
-    user_id: string;
-    kanban_id: string;
+    user_id?: string;
+    kanban_id?: string;
+    tasks?: Array<{ task_id: string; task_content: string }>;
   }
   interface KanbanData {
     columns: Record<
@@ -60,7 +61,6 @@ export default function KanbanBoard({
     const data = await response.json();
     console.log("Response Data:", data);
 
-    // Check if the response was successful
     if (!response.ok) {
       console.error("Error:", data);
     }
@@ -84,13 +84,18 @@ export default function KanbanBoard({
     setActiveTask(e.active.id);
   };
 
-  const handleDragEnd = async (e: any) => {
-    if (!e.over) return; // dropped outside
-    const taskId = String(e.active.id).replace("task-", "");
-    const columnId = String(e.over?.id).replace("col-", "");
-    console.log("over:", e.over, "collisions:", e.collisions);
+  const handleDragEnd = async ({ active, over }: DragEndEvent) => {
+    if (!over) return;
 
-    console.log("Dropped task", taskId, "into col", columnId);
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    if (!overId.startsWith("col-")) return;
+
+    const taskId = activeId.replace("task-", "");
+    const columnId = overId.replace("col-", "");
+
+    console.log("Dropped task", taskId, "into column ", columnId);
 
     await fetch(`http://localhost:8000/task/${taskId}/${columnId}`, {
       method: "POST",
@@ -112,24 +117,31 @@ export default function KanbanBoard({
         <DndContext
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
-          collisionDetection={pointerWithin}
+          collisionDetection={closestCorners}
         >
           <ul className="grid grid-cols-3">
             {Object.values(kanban?.columns).map((col, index) => (
               <li
-                key={col.id}
-                className="flex flex-col min-w-0 p-3 border-2 border-b-cyan-400"
+                key={col.column_id || index} // Fallback key
+                className="flex flex-col min-w-0 p-3 border-2 border-b-cyan-400 h-full"
               >
                 <h1 className="mb-2">{col.column_title}</h1>
-                <Droppable id={`col-${col.id}`}>
+
+                <Droppable id={`col-${col.column_id}`} className="flex-1">
                   {col.tasks?.map((task) => (
-                    // TASK
                     <Draggable id={`task-${task.task_id}`} key={task.task_id}>
-                      <div className="flex flex-row border-2 p-3 bg-sky-700 hover:bg-sky-900 m-1">
-                        <p>{task.task_content}</p>
+                      <div className="group relative flex flex-row items-start justify-between bg-white p-4 mb-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing select-none">
+                        {/* Task Content */}
+                        <p className="text-gray-700 text-sm font-medium leading-snug flex-1 mr-2 break-all">
+                          {task.task_content}
+                        </p>
+
+                        {/* Delete Button (Only visible on Hover) */}
                         <button
+                          onPointerDown={(e) => e.stopPropagation()}
                           onClick={() => handleDelete(parseInt(task.task_id))}
-                          className="px-2 ml-auto rounded-4xl border-2 bg-red-400 hover:bg-red-500 select-none"
+                          className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          aria-label="Delete task"
                         >
                           X
                         </button>
